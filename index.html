@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Analyzer - AI-Powered Code Insights</title>
+    <meta name="description"
+        content="Analyze your code with AI-powered insights, line-by-line explanations, and improvement suggestions">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <h1>Code Analyzer</h1>
+            </div>
+            <p class="tagline">AI-Powered Code Insights & Suggestions</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="section-header">
+                    <h2>Paste Your Code</h2>
+                    <div class="language-selector">
+                        <select id="language-select">
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="csharp">C#</option>
+                            <option value="go">Go</option>
+                            <option value="rust">Rust</option>
+                            <option value="typescript">TypeScript</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="code-input-wrapper">
+                    <textarea id="code-input" class="code-input" placeholder="// Paste or type your code here...
+function example() {
+    return 'Hello, World!';
+}"></textarea>
+                    <div class="line-numbers" id="line-numbers"></div>
+                </div>
+                <button id="analyze-btn" class="analyze-btn">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    Analyze Code
+                </button>
+            </section>
+
+            <!-- Results Section -->
+            <div id="results" class="results-section hidden">
+                <!-- Overview Card -->
+                <div class="result-card overview-card">
+                    <div class="card-header">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <h3>What This Code Does</h3>
+                    </div>
+                    <div id="overview-content" class="card-content">
+                        <div class="skeleton"></div>
+                    </div>
+                </div>
+
+                <!-- Line-by-Line Card -->
+                <div class="result-card explanation-card">
+                    <div class="card-header">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <h3>Line-by-Line Explanation</h3>
+                    </div>
+                    <div id="explanation-content" class="card-content">
+                        <div class="skeleton"></div>
+                    </div>
+                </div>
+
+                <!-- Suggestions Card -->
+                <div class="result-card suggestions-card">
+                    <div class="card-header">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <h3>Suggestions to Improve</h3>
+                    </div>
+                    <div id="suggestions-content" class="card-content">
+                        <div class="skeleton"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="loading-overlay" class="loading-overlay hidden">
+                <div class="loading-spinner"></div>
+                <p>Analyzing your code...</p>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Built with ❤️ using AI-powered analysis</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
