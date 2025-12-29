@@ -1,6 +1,6 @@
 # 🚀 Code Analyzer
 
-A beautiful, AI-powered web application that analyzes your code and provides:
+A beautiful, AI-powered application that analyzes your code and provides:
 - **What the code does** - High-level overview
 - **Line-by-line explanation** - Detailed breakdown of each line
 - **2-3 suggestions to improve** - Actionable recommendations
@@ -14,19 +14,35 @@ A beautiful, AI-powered web application that analyzes your code and provides:
 - 🎯 **Intuitive UI** with micro-interactions
 - 💡 **Smart Suggestions** for code improvement
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Python/Streamlit Version)
 
-1. **Open the app**
-   Simply open `index.html` in your web browser (Chrome, Firefox, Edge, Safari)
+### Prerequisites
+- Python 3.8 or higher
+- pip (Python package manager)
 
-2. **Paste your code**
-   Select your programming language and paste your code into the editor
+### Installation
 
-3. **Analyze**
-   Click "Analyze Code" or press `Ctrl+Enter` (or `Cmd+Enter` on Mac)
+1. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-4. **Review results**
-   View the overview, line-by-line explanation, and improvement suggestions
+2. **Run the application**
+   ```bash
+   streamlit run app.py
+   ```
+
+3. **Use the app**
+   - The app will open in your default browser (usually at http://localhost:8501)
+   - Select your programming language from the dropdown
+   - Paste your code into the editor
+   - Click "🔍 Analyze Code" to get insights
+
+## 📦 Alternative: HTML/JavaScript Version
+
+There's also a standalone HTML/JavaScript version that requires no installation:
+1. Open `index.html` in your web browser
+2. Works completely offline!
 
 ## 🛠️ How It Works
 
@@ -53,30 +69,33 @@ Example API integration is documented in the `script.js` file!
 ## 📁 Project Structure
 
 ```
-code-analyzer/
-├── index.html      # Main HTML structure
-├── styles.css      # Premium styling & animations
-├── script.js       # Analysis logic & UI interactions
-└── README.md       # This file
+Code-Explainer-App/
+├── app.py              # Python/Streamlit application (recommended)
+├── requirements.txt    # Python dependencies
+├── index.html          # Standalone HTML version
+├── styles.css          # CSS for HTML version
+├── script.js           # JavaScript for HTML version
+└── README.md           # This file
 ```
 
 ## 🎨 Customization
 
-### Colors & Theme
-Edit CSS variables in `styles.css`:
-```css
-:root {
-    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --bg-primary: #0f0f23;
-    /* ... more customization options ... */
-}
-```
+### Colors & Theme (Python version)
+Edit the CSS in `app.py` (look for `st.markdown("""<style>...`):
+- Modify gradient colors
+- Adjust card styling
+- Change fonts and spacing
 
 ### Analysis Logic
-Modify these functions in `script.js`:
-- `generateOverview()` - Customize the overview generation
-- `explainLine()` - Adjust line-by-line explanations
-- `generateSuggestions()` - Add/modify suggestion rules
+Modify these functions in `app.py`:
+- `generate_overview()` - Customize the overview generation
+- `explain_line()` - Adjust line-by-line explanations
+- `generate_suggestions()` - Add/modify suggestion rules
+
+### HTML/JS Version Customization
+For the standalone HTML version:
+- Edit CSS in `styles.css`
+- Modify JavaScript functions in `script.js`
 
 ## 🌟 Design Philosophy
 

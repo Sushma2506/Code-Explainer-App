@@ -1,8 +1,20 @@
 # Code Analyzer Project
 *.log
-*.tmp
+*.t# Node modules
 node_modules/
-.DS_Store
-Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# IDE files
 .vscode/
 .idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.Python
