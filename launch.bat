@@ -1,3 +1,0 @@
-@echo off
-echo Opening Code Analyzer App...
-start "" "index.html"
