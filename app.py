@@ -91,19 +91,77 @@ st.markdown("""
     
     /* Select box styling */
     .stSelectbox label {
-        color: #a0a0c0 !important;
-        font-weight: 500 !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+    }
+    
+    /* Main select container - force dark background */
+    div[data-baseweb="select"] {
+        background-color: rgba(30, 30, 50, 0.9) !important;
     }
     
     div[data-baseweb="select"] > div {
-        background-color: rgba(30, 30, 50, 0.8) !important;
-        border: 1px solid rgba(102, 126, 234, 0.4) !important;
+        background-color: rgba(30, 30, 50, 0.9) !important;
+        border: 2px solid rgba(102, 126, 234, 0.5) !important;
         border-radius: 8px !important;
-        color: #e0e0ff !important;
+    }
+    
+    div[data-baseweb="select"] div {
+        color: #ffffff !important;
+        background-color: transparent !important;
     }
     
     div[data-baseweb="select"] span {
-        color: #e0e0ff !important;
+        color: #ffffff !important;
+    }
+    
+    /* Force text color in select value */
+    div[data-baseweb="select"] input {
+        color: #ffffff !important;
+    }
+    
+    /* ===== AGGRESSIVE DROPDOWN MENU STYLING ===== */
+    /* Target the exact popover content */
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    ul[role="listbox"] {
+        background-color: #0f0f23 !important;
+        border: 2px solid rgba(102, 126, 234, 0.4) !important;
+    }
+
+    /* Force background on the specific list container */
+    ul[data-baseweb="menu"] {
+        background-color: #0f0f23 !important;
+    }
+
+    /* Override any light theme defaults */
+    .stSelectbox div[data-baseweb="select"] > div:first-child {
+        background-color: rgba(30, 30, 50, 0.9) !important;
+        color: white !important;
+        border-color: rgba(102, 126, 234, 0.5) !important;
+    }
+
+    /* OPTIONS STYLING */
+    li[role="option"] {
+        background-color: #0f0f23 !important;
+        color: white !important;
+    }
+
+    /* Text inside options */
+    li[role="option"] div, 
+    li[role="option"] span {
+        color: white !important;
+    }
+
+    /* Hover state */
+    li[role="option"]:hover {
+        background-color: rgba(102, 126, 234, 0.4) !important;
+    }
+
+    /* Selected state */
+    li[role="option"][aria-selected="true"] {
+        background-color: rgba(102, 126, 234, 0.6) !important;
     }
     
     /* Result cards */

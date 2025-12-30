@@ -38,12 +38,6 @@ A beautiful, AI-powered application that analyzes your code and provides:
    - Paste your code into the editor
    - Click "🔍 Analyze Code" to get insights
 
-## 📦 Alternative: HTML/JavaScript Version
-
-There's also a standalone HTML/JavaScript version that requires no installation:
-1. Open `index.html` in your web browser
-2. Works completely offline!
-
 ## 🛠️ How It Works
 
 Currently, the app uses **local rule-based analysis** to provide basic code insights. This works great for demonstrating the functionality!
@@ -70,20 +64,17 @@ Example API integration is documented in the `script.js` file!
 
 ```
 Code-Explainer-App/
-├── app.py              # Python/Streamlit application (recommended)
+├── app.py              # Main Streamlit application
 ├── requirements.txt    # Python dependencies
-├── index.html          # Standalone HTML version
-├── styles.css          # CSS for HTML version
-├── script.js           # JavaScript for HTML version
 └── README.md           # This file
 ```
 
 ## 🎨 Customization
 
-### Colors & Theme (Python version)
+### Colors & Theme
 Edit the CSS in `app.py` (look for `st.markdown("""<style>...`):
-- Modify gradient colors
-- Adjust card styling
+- Modify gradient colors (search for `#667eea` and `#764ba2`)
+- Adjust card styling and backgrounds
 - Change fonts and spacing
 
 ### Analysis Logic
@@ -91,11 +82,6 @@ Modify these functions in `app.py`:
 - `generate_overview()` - Customize the overview generation
 - `explain_line()` - Adjust line-by-line explanations
 - `generate_suggestions()` - Add/modify suggestion rules
-
-### HTML/JS Version Customization
-For the standalone HTML version:
-- Edit CSS in `styles.css`
-- Modify JavaScript functions in `script.js`
 
 ## 🌟 Design Philosophy
 
