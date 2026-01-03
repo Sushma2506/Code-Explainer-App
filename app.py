@@ -7,7 +7,9 @@ A Streamlit application that analyzes code and provides:
 """
 
 import streamlit as st
-import re
+import google.generativeai as genai
+import json
+import os
 from typing import List, Dict, Any
 
 # ============================================
@@ -17,7 +19,7 @@ st.set_page_config(
     page_title="Code Analyzer - AI-Powered Insights",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # ============================================
@@ -276,6 +278,19 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
     }
     
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #050510 !important;
+        border-right: 1px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    /* Sidebar Input Styling */
+    [data-testid="stSidebar"] input {
+        background-color: rgba(30, 30, 50, 0.8) !important;
+        color: white !important;
+        border: 1px solid rgba(102, 126, 234, 0.4) !important;
+    }
+    
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -289,325 +304,74 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# ANALYSIS FUNCTIONS
+# GEMINI API INTEGRATION
 # ============================================
 
-def detect_code_purpose(code: str) -> str:
-    """Detect the purpose of the code based on keywords."""
-    purposes = [
-        (['fetch', 'axios', 'http', 'api', 'request'], 'performing HTTP requests or API calls'),
-        (['addEventListener', 'onClick', 'DOM', 'document'], 'handling DOM manipulation and events'),
-        (['useState', 'useEffect', 'component'], 'building a React component'),
-        (['class', 'constructor', 'extends'], 'implementing object-oriented programming concepts'),
-        (['async', 'await', 'Promise'], 'handling asynchronous operations'),
-        (['map', 'filter', 'reduce'], 'performing array transformations'),
-    ]
-    
-    for keywords, purpose in purposes:
-        if any(keyword in code for keyword in keywords):
-            return purpose
-    
-    return 'general programming logic'
-
-
-def generate_overview(code: str, language: str) -> str:
-    """Generate an overview of what the code does."""
-    lines = [line for line in code.split('\n') if line.strip()]
-    line_count = len(lines)
-    
-    overview = f"This {language} code snippet contains {line_count} lines. "
-    
-    # Detect common patterns
-    if any(keyword in code for keyword in ['function', 'def ', 'void ']):
-        overview += 'It defines one or more functions. '
-    
-    if 'class ' in code:
-        overview += 'It includes class definitions. '
-    
-    if any(keyword in code for keyword in ['import ', 'require(', '#include']):
-        overview += 'It imports external modules or libraries. '
-    
-    if any(keyword in code for keyword in ['for ', 'while ']):
-        overview += 'It contains loop structures for iteration. '
-    
-    if any(keyword in code for keyword in ['if ', 'switch ']):
-        overview += 'It uses conditional logic for decision-making. '
-    
-    overview += f"\n\nThe code appears to be {detect_code_purpose(code)} based on its structure and keywords."
-    
-    return overview
-
-
-def explain_line(line: str, language: str) -> str:
-    """Explain a single line of code."""
-    trimmed = line.strip()
-    
-    # Function declarations
-    func_match = re.search(r'function\s+(\w+)', trimmed)
-    if func_match:
-        func_name = func_match.group(1)
-        params_match = re.search(r'\((.*?)\)', trimmed)
-        params = params_match.group(1) if params_match else ''
-        if params:
-            return f"Declares a function named '{func_name}' that accepts parameters: {params}. This creates a reusable block of code."
-        return f"Declares a function named '{func_name}' with no parameters. This creates a reusable block of code."
-    
-    # Python function definitions
-    py_func_match = re.search(r'def\s+(\w+)', trimmed)
-    if py_func_match:
-        func_name = py_func_match.group(1)
-        return f"Defines a Python function named '{func_name}'. This creates a reusable code block that can be called later."
-    
-    # Arrow functions
-    arrow_match = re.search(r'(?:const|let|var)\s+(\w+)\s*=\s*\([^)]*\)\s*=>', trimmed)
-    if arrow_match:
-        func_name = arrow_match.group(1)
-        return f"Creates an arrow function assigned to '{func_name}'. Arrow functions are a concise way to write functions in JavaScript."
-    
-    # Return statements
-    if trimmed.startswith('return '):
-        return_value = re.sub(r';.*$', '', trimmed.replace('return ', ''))
-        if len(return_value) < 30:
-            return f"Returns the value: {return_value}. This exits the function and sends back the result to wherever it was called."
-        return "Returns a computed value back to the caller. This exits the current function and provides its result."
-    
-    # Variable declarations
-    var_match = re.search(r'(?:const|let|var)\s+(\w+)\s*=\s*(.+)', trimmed)
-    if var_match:
-        var_name = var_match.group(1)
-        value = re.sub(r';.*$', '', var_match.group(2))
-        var_type = 'constant' if trimmed.startswith('const') else 'variable'
+def get_gemini_analysis(code: str, language: str, api_key: str) -> Dict[str, Any]:
+    """
+    Analyze code using Google Gemini API.
+    Returns a dictionary with overview, line_by_line, and suggestions.
+    """
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        if 'require(' in value or 'import' in value:
-            return f"Creates a {var_type} '{var_name}' that imports/requires an external module for use in this code."
-        if re.match(r'^\d+$', value):
-            return f"Declares a {var_type} '{var_name}' and assigns it the numeric value {value}."
-        if re.match(r"^['\"`]", value):
-            return f"Declares a {var_type} '{var_name}' and assigns it a string value."
-        if 'new ' in value:
-            class_match = re.search(r'new\s+(\w+)', value)
-            class_name = class_match.group(1) if class_match else 'a class'
-            return f"Creates a new instance of {class_name} and stores it in '{var_name}'."
-        if '=>' in value or 'function' in value:
-            return f"Assigns a function to the {var_type} '{var_name}', creating a callable reference."
-        return f"Declares a {var_type} '{var_name}' and initializes it with a value."
-    
-    # Conditional statements
-    if_match = re.search(r'if\s*\((.*?)\)', trimmed)
-    if if_match:
-        condition = if_match.group(1)
-        if len(condition) < 40:
-            return f"Checks if the condition '{condition}' is true. If so, the following code block executes."
-        return "Evaluates a conditional statement. If the condition is true, it executes the code inside the if block."
-    
-    if re.search(r'else\s+if\s*\(', trimmed):
-        return "Checks an alternative condition if the previous 'if' was false. Allows testing multiple conditions sequentially."
-    
-    if trimmed == 'else' or trimmed.startswith('else {'):
-        return "Executes this code block if all previous 'if' and 'else if' conditions were false. Acts as a fallback option."
-    
-    # Loops
-    if re.search(r'for\s*\(', trimmed):
-        if ' of ' in trimmed:
-            return "Iterates over each element in a collection using a for...of loop. Simpler than traditional for loops."
-        if ' in ' in trimmed:
-            return "Iterates over object properties or array indices using a for...in loop."
-        return "Creates a loop that repeats code a specific number of times, typically using a counter variable."
-    
-    if re.search(r'while\s*\(', trimmed):
-        return "Creates a loop that continues executing as long as the condition remains true. Use caution to avoid infinite loops."
-    
-    # Array methods
-    if '.map(' in trimmed:
-        return "Transforms each element of an array using the provided function, creating a new array with the results."
-    if '.filter(' in trimmed:
-        return "Creates a new array containing only elements that pass the test implemented by the provided function."
-    if '.reduce(' in trimmed:
-        return "Reduces an array to a single value by executing a function on each element, accumulating the result."
-    if '.forEach(' in trimmed:
-        return "Executes a function once for each array element. Similar to a for loop but more functional in style."
-    if '.find(' in trimmed:
-        return "Searches the array and returns the first element that satisfies the provided testing function."
-    
-    # Async/await
-    if 'async ' in trimmed and 'function' in trimmed:
-        return "Declares an asynchronous function that can use 'await' to pause execution until promises resolve."
-    if 'await ' in trimmed:
-        return "Pauses execution until the promise resolves, then continues with the result. Makes async code read like synchronous code."
-    
-    # Imports/requires
-    import_match = re.search(r'import\s+(.+?)\s+from', trimmed)
-    if import_match:
-        imported = import_match.group(1)
-        return f"Imports {imported} from an external module, making it available for use in this file."
-    
-    if 'require(' in trimmed:
-        module_match = re.search(r"require\(['\"](.+?)['\"]\)", trimmed)
-        if module_match:
-            module = module_match.group(1)
-            return f"Loads the '{module}' module using Node.js require system, making its exports available."
-        return "Loads an external module using the CommonJS require system."
-    
-    # Class definitions
-    class_match = re.search(r'class\s+(\w+)', trimmed)
-    if class_match:
-        class_name = class_match.group(1)
-        extends_match = re.search(r'extends\s+(\w+)', trimmed)
-        if extends_match:
-            return f"Defines a class '{class_name}' that inherits from '{extends_match.group(1)}', gaining its properties and methods."
-        return f"Defines a class named '{class_name}', which is a blueprint for creating objects with specific properties and methods."
-    
-    # Console/print statements
-    if 'console.log(' in trimmed:
-        return "Outputs information to the console for debugging or monitoring purposes. Useful for tracking code execution."
-    if 'console.error(' in trimmed:
-        return "Outputs an error message to the console, typically used for error handling and debugging."
-    if re.search(r'print\s*\(', trimmed):
-        return "Outputs text or values to the standard output (usually the screen or console)."
-    
-    # Try-catch
-    if trimmed == 'try {' or trimmed.startswith('try {'):
-        return "Begins a try block to execute code that might throw an error. Allows graceful error handling."
-    if re.search(r'catch\s*\(', trimmed):
-        return "Catches and handles any errors thrown in the try block, preventing the program from crashing."
-    if trimmed == 'finally {' or trimmed.startswith('finally {'):
-        return "Executes code regardless of whether an error occurred, typically used for cleanup operations."
-    
-    # Object/Array operations
-    if 'push(' in trimmed:
-        return "Adds one or more elements to the end of an array, modifying the original array."
-    if 'pop(' in trimmed:
-        return "Removes and returns the last element from an array, modifying the original array."
-    
-    # Method calls
-    method_match = re.search(r'\.(\w+)\(', trimmed)
-    if method_match:
-        method = method_match.group(1)
-        return f"Calls the '{method}' method on an object, executing its associated functionality."
-    
-    # Assignments
-    if '=' in trimmed and '==' not in trimmed and '===' not in trimmed:
-        var_name = trimmed.split('=')[0].strip()
-        return f"Assigns a new value to '{var_name}', updating its stored data."
-    
-    # Generic fallback
-    if trimmed.endswith('{'):
-        return "Opens a code block that groups related statements together."
-    if trimmed in ['}', '};']:
-        return "Closes the current code block, ending the scope of the previous statement (function, loop, conditional, etc.)."
-    
-    return "Executes a statement that performs an operation or calculation as part of the program logic."
-
-
-def generate_line_by_line(code: str, language: str) -> List[Dict[str, Any]]:
-    """Generate line-by-line explanations."""
-    lines = code.split('\n')
-    explanations = []
-    
-    for index, line in enumerate(lines):
-        trimmed = line.strip()
+        prompt = f"""
+        Analyze the following {language} code and provide a response in JSON format.
         
-        # Skip empty lines and pure comment lines
-        if not trimmed:
-            continue
-        if any(trimmed.startswith(c) for c in ['//', '#', '/*', '*']):
-            continue
+        The JSON structure should be:
+        {{
+            "overview": "A brief summary of what the code does.",
+            "line_by_line": [
+                {{
+                    "line_number": 1,
+                    "code": "code snippet",
+                    "explanation": "Explanation of this specific line."
+                }}
+            ],
+            "suggestions": [
+                {{
+                    "title": "Suggestion Title",
+                    "description": "Why this suggestion helps.",
+                    "example": "Code example of the improvement."
+                }}
+            ]
+        }}
         
-        explanation = explain_line(trimmed, language)
-        explanations.append({
-            'line_number': index + 1,
-            'code': line,
-            'explanation': explanation
-        })
-    
-    return explanations
-
-
-def generate_suggestions(code: str, language: str) -> List[Dict[str, str]]:
-    """Generate improvement suggestions."""
-    suggestions = []
-    lines = code.split('\n')
-    
-    # Nested loops
-    if re.search(r'for\s*\([^)]*\)\s*{[^}]*for\s*\(', code, re.DOTALL):
-        suggestions.append({
-            'title': 'Optimize Nested Loops',
-            'description': 'Nested loops can have O(n²) complexity. Consider using hash maps, array methods like .find(), or refactoring to reduce iterations.',
-            'example': '// Instead of nested loops:\nconst item = array.find(x => x.id === targetId);\n// Or use a Map for O(1) lookups:\nconst map = new Map(items.map(i => [i.id, i]));'
-        })
-    
-    # Missing error handling for async
-    if ('fetch(' in code or 'axios' in code) and 'catch' not in code and 'try' not in code:
-        suggestions.append({
-            'title': 'Add Error Handling for Network Requests',
-            'description': 'Network requests can fail due to connectivity issues, server errors, or timeouts. Always handle errors to provide a better user experience.',
-            'example': 'try {\n  const response = await fetch(url);\n  if (!response.ok) throw new Error(`HTTP ${response.status}`);\n  const data = await response.json();\n} catch (error) {\n  console.error("Failed to fetch:", error);\n  // Show error message to user\n}'
-        })
-    
-    # Using var instead of const/let
-    if language == 'javascript' and 'var ' in code:
-        var_count = len(re.findall(r'\bvar\b', code))
-        suggestions.append({
-            'title': 'Replace "var" with "const" or "let"',
-            'description': f'Found {var_count} use(s) of "var". Use "const" for values that won\'t change, "let" for values that will. This provides better scoping (block vs function) and prevents hoisting issues.',
-            'example': 'const API_URL = "https://api.example.com"; // won\'t change\nlet counter = 0; // will change\n\n// "var" has function scope and hoisting issues:\nvar x = 1; // can leak outside blocks'
-        })
-    
-    # Magic numbers
-    magic_numbers = re.findall(r'(?<![a-zA-Z0-9_])\d{2,}(?![a-zA-Z0-9_])', code)
-    if len(magic_numbers) > 2 and not re.search(r'const\s+[A-Z_]+\s*=', code):
-        suggestions.append({
-            'title': 'Extract Magic Numbers to Named Constants',
-            'description': f'Hard-coded values like {", ".join(magic_numbers[:3])} make code harder to understand and maintain. Use descriptive constant names.',
-            'example': 'const MAX_RETRY_ATTEMPTS = 3;\nconst TIMEOUT_MILLISECONDS = 5000;\nconst MIN_PASSWORD_LENGTH = 8;\n\n// More readable:\nif (password.length < MIN_PASSWORD_LENGTH) { ... }'
-        })
-    
-    # console.log in production
-    if 'console.log(' in code:
-        log_count = len(re.findall(r'console\.log\(', code))
-        suggestions.append({
-            'title': 'Use Proper Logging Instead of console.log',
-            'description': f'Found {log_count} console.log statement(s). Consider using a proper logging library or remove before production.',
-            'example': '// Development:\nif (process.env.NODE_ENV === "development") {\n  console.debug("Debug info:", data);\n}\n\n// Or use a logger:\nimport logger from "./logger";\nlogger.info("User logged in", { userId });'
-        })
-    
-    # == instead of ===
-    if '==' in code and '===' not in code:
-        suggestions.append({
-            'title': 'Use Strict Equality (===)',
-            'description': 'Use === instead of == to avoid type coercion bugs. Strict equality checks both value and type.',
-            'example': '// Bad: Uses type coercion\nif (value == "5") // true for both "5" and 5\n\n// Good: Strict comparison\nif (value === "5") // only true for string "5"'
-        })
-    
-    # Large functions
-    if len(lines) > 25 and 'function' in code:
-        suggestions.append({
-            'title': 'Break Down Large Functions',
-            'description': 'This function is quite long. Consider breaking it into smaller, focused functions that each do one thing well. Aim for functions under 20-30 lines.',
-            'example': '// Instead of one large function:\nfunction processOrder(order) {\n  const validated = validateOrder(order);\n  const calculated = calculateTotal(validated);\n  const saved = saveOrder(calculated);\n  return notifyUser(saved);\n}'
-        })
-    
-    # No suggestions case
-    if len(suggestions) == 0:
-        suggestions.append({
-            'title': 'Consider Adding Unit Tests',
-            'description': 'Well-tested code is more maintainable and reliable. Consider writing unit tests for your functions to catch bugs early.',
-            'example': '// Using pytest or similar:\ndef test_calculate_total():\n    assert calculate_total(10, 5) == 15'
-        })
+        Rules:
+        1. "line_by_line" should only include meaningful lines (skip empty lines or just brackets if they don't add context).
+        2. Provide at most 3 top "suggestions" for improvement. If code is perfect, suggest best practices or tests.
+        3. Ensure the response is VALID JSON. Do not include markdown formatting like ```json ... ```.
         
-        suggestions.append({
-            'title': 'Add Type Safety with Type Hints',
-            'description': 'Type hints catch type errors early and improve code quality with better IDE support.',
-            'example': '# Python with type hints:\ndef greet(name: str) -> str:\n    return f"Hello, {name}"\n\n# Editor will catch: greet(123) # Error'
-        })
-    
-    # Return max 3 suggestions
-    return suggestions[:3]
-
+        Code to analyze:
+        {code}
+        """
+        
+        response = model.generate_content(prompt)
+        text_response = response.text
+        
+        # Clean up markdown if present
+        if text_response.startswith("```json"):
+            text_response = text_response.replace("```json", "").replace("```", "")
+        
+        return json.loads(text_response)
+        
+    except Exception as e:
+        return {"error": str(e)}
 
 # ============================================
 # STREAMLIT UI
 # ============================================
+
+# Sidebar for API Key
+with st.sidebar:
+    st.markdown("### 🔑 API Configuration")
+    api_key = st.text_input("Enter Google Gemini API Key", type="password", help="Get your key from https://aistudio.google.com/")
+    if not api_key:
+        st.warning("⚠️ API Key is required for analysis.")
+    st.markdown("---")
+    st.markdown("### About")
+    st.markdown("This tool uses **Gemini 1.5 Flash** to analyze your code structure, explain logic, and suggest improvements.")
 
 # Header
 st.markdown('<h1 class="main-header">⚡ Code Analyzer</h1>', unsafe_allow_html=True)
@@ -618,7 +382,7 @@ col1, col2 = st.columns([3, 1])
 with col2:
     language = st.selectbox(
         "Language",
-        ["javascript", "python", "java", "cpp", "csharp", "go", "rust", "typescript"],
+        ["javascript", "python", "java", "cpp", "csharp", "go", "rust", "typescript", "other"],
         index=0
     )
 
@@ -626,64 +390,73 @@ with col2:
 st.markdown("### 📝 Paste Your Code")
 code_input = st.text_area(
     "Code",
-    placeholder="// Paste or type your code here...\nfunction example() {\n    return 'Hello, World!';\n}",
+    placeholder="// Paste or type your code here...\\nfunction example() {\\n    return 'Hello, World!';\\n}",
     height=300,
     label_visibility="collapsed"
 )
 
 # Analyze button
 if st.button("🔍 Analyze Code", use_container_width=True):
-    if code_input.strip():
-        with st.spinner("Analyzing your code..."):
-            # Generate analysis
-            overview = generate_overview(code_input, language)
-            line_by_line = generate_line_by_line(code_input, language)
-            suggestions = generate_suggestions(code_input, language)
+    if not api_key:
+        st.error("❌ Please enter your Google Gemini API Key in the sidebar to proceed.")
+    elif code_input.strip():
+        with st.spinner("🤖 AI is analyzing your code..."):
             
-            st.markdown("---")
+            # Fetch analysis from Gemini
+            analysis = get_gemini_analysis(code_input, language, api_key)
             
-            # Overview Section
-            st.markdown('<div class="result-card">', unsafe_allow_html=True)
-            st.markdown('<div class="card-header">📄 What This Code Does</div>', unsafe_allow_html=True)
-            st.markdown(f'<p style="color: #d0d0e0; line-height: 1.6;">{overview}</p>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Line-by-Line Section
-            st.markdown('<div class="result-card">', unsafe_allow_html=True)
-            st.markdown('<div class="card-header">📋 Line-by-Line Explanation</div>', unsafe_allow_html=True)
-            
-            if line_by_line:
-                for item in line_by_line:
-                    st.markdown(f'''
-                    <div class="line-item">
-                        <span class="line-number">Line {item['line_number']}</span>
-                        <code class="line-code">{item['code']}</code>
-                        <p class="line-explanation">{item['explanation']}</p>
-                    </div>
-                    ''', unsafe_allow_html=True)
+            if "error" in analysis:
+                st.error(f"❌ Analysis Failed: {analysis['error']}")
             else:
-                st.markdown('<p style="color: #a0a0c0;">No executable lines found to explain.</p>', unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Suggestions Section
-            st.markdown('<div class="result-card">', unsafe_allow_html=True)
-            st.markdown('<div class="card-header">💡 Suggestions to Improve</div>', unsafe_allow_html=True)
-            
-            for suggestion in suggestions:
-                example_html = f'<code class="suggestion-example">{suggestion["example"]}</code>' if suggestion.get('example') else ''
-                st.markdown(f'''
-                <div class="suggestion-item">
-                    <div class="suggestion-title">{suggestion['title']}</div>
-                    <p class="suggestion-description">{suggestion['description']}</p>
-                    {example_html}
-                </div>
-                ''', unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown("---")
+                
+                # Overview Section
+                st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                st.markdown('<div class="card-header">📄 What This Code Does</div>', unsafe_allow_html=True)
+                st.markdown(f'<p style="color: #d0d0e0; line-height: 1.6;">{analysis.get("overview", "No overview available.")}</p>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Line-by-Line Section
+                st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                st.markdown('<div class="card-header">📋 Line-by-Line Explanation</div>', unsafe_allow_html=True)
+                
+                line_items = analysis.get("line_by_line", [])
+                if line_items:
+                    for item in line_items:
+                        st.markdown(f'''
+                        <div class="line-item">
+                            <span class="line-number">Line {item.get('line_number', '-')}</span>
+                            <code class="line-code">{item.get('code', '')}</code>
+                            <p class="line-explanation">{item.get('explanation', '')}</p>
+                        </div>
+                        ''', unsafe_allow_html=True)
+                else:
+                    st.markdown('<p style="color: #a0a0c0;">No detailed explanation returned.</p>', unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Suggestions Section
+                st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                st.markdown('<div class="card-header">💡 Suggestions to Improve</div>', unsafe_allow_html=True)
+                
+                suggestions = analysis.get("suggestions", [])
+                if suggestions:
+                    for suggestion in suggestions:
+                        example_html = f'<code class="suggestion-example">{suggestion.get("example", "")}</code>' if suggestion.get('example') else ''
+                        st.markdown(f'''
+                        <div class="suggestion-item">
+                            <div class="suggestion-title">{suggestion.get('title', 'Suggestion')}</div>
+                            <p class="suggestion-description">{suggestion.get('description', '')}</p>
+                            {example_html}
+                        </div>
+                        ''', unsafe_allow_html=True)
+                else:
+                    st.markdown('<p style="color: #a0a0c0;">No suggestions found.</p>', unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.warning("⚠️ Please enter some code to analyze!")
 
 # Footer
 st.markdown("---")
-st.markdown('<p style="text-align: center; color: #a0a0c0; margin-top: 2rem;">Built with ❤️ using AI-powered analysis</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #a0a0c0; margin-top: 2rem;">Built with ❤️ using Gemini 1.5 Flash</p>', unsafe_allow_html=True)
